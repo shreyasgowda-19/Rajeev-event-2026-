@@ -61,4 +61,4 @@ Key features (MVP focused for 24-hour hackathon):
 6. Basic notifications (email + push)
 
 **Polish focus (last hours)**:  
-Clean & modern UI, 4–5 dummy patients/doctors, beautiful cards & timeline view
+Clean & modern UI, 4–5 dummy patients/doctors, beautiful cards & timeline view.
