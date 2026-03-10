@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  password: {
+    type: String,
+    select: false  // Don't return password by default
+  },
   name: {
     type: String,
     required: true
@@ -29,7 +33,7 @@ const userSchema = new mongoose.Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
+      type: [Number],
       default: [0, 0]
     },
     address: String
@@ -40,7 +44,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  fcmToken: String, // For push notifications
+  fcmToken: String,
   createdAt: {
     type: Date,
     default: Date.now
