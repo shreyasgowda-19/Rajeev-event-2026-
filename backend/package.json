@@ -13,6 +13,9 @@
   },
   "keywords": [],
   "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.2",
+    "@mapbox/mapbox-sdk": "^0.16.2",
+    "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
