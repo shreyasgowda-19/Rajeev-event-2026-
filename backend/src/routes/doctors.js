@@ -5,23 +5,29 @@ const {
   getAllDoctors,
   getDoctorById,
   updateDoctorProfile,
-  getDoctorAppointments
+  getDoctorAppointments,
+  geocodeClinicAddress,      // NEW
+  reverseGeocodeLocation   // NEW
 } = require('../controllers/doctorController');
-const { auth, authorize } = require('../middleware/auth');  // ✅ Import BOTH
+const { auth, authorize } = require('../middleware/auth');
 
-// Create doctor profile (User must be creating doctor profile)
+// Create doctor profile
 router.post('/profile', auth, createDoctorProfile);
 
-// Get all doctors (Public - no auth required, but we'll keep auth for consistency)
+// Get all doctors (with real hospital search)
 router.get('/', auth, getAllDoctors);
 
-// Get single doctor (Public)
+// Geocoding endpoints
+router.post('/geocode', auth, geocodeClinicAddress);
+router.get('/reverse-geocode', auth, reverseGeocodeLocation);
+
+// Get single doctor
 router.get('/:id', auth, getDoctorById);
 
-// Update doctor profile (Doctor only)
+// Update doctor profile
 router.put('/profile', auth, authorize('doctor'), updateDoctorProfile);
 
-// Get doctor appointments (Doctor only)
+// Get doctor appointments
 router.get('/:doctorId/appointments', auth, authorize('doctor'), getDoctorAppointments);
 
 module.exports = router;

@@ -17,6 +17,7 @@ const doctorRoutes = require('./src/routes/doctors');
 const reportRoutes = require('./src/routes/reports');
 const appointmentRoutes = require('./src/routes/appointments');
 const prescriptionRoutes = require('./src/routes/prescriptions');
+const mapRoutes = require('./src/routes/maps');
 
 // Connect to database
 connectDB();
@@ -27,10 +28,30 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 
+// CORS - Allow multiple origins
+const allowedOrigins = [
+  'http://localhost:3000',   // Your current frontend
+  'http://localhost:5173',   // Vite default (if you switch later)
+  'http://localhost:3001',   // Alternative ports
+  process.env.CLIENT_URL,     // From .env file
+].filter(Boolean);
+
 // CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // Body parser
@@ -48,6 +69,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/maps', mapRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

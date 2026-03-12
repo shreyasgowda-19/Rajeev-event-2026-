@@ -7,24 +7,15 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "mongoose": "^9.2.4",
-    "multer": "^2.1.1",
-    "nodemailer": "^8.0.2"
-=======
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "jest"
   },
   "keywords": [],
   "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.2",
+    "@mapbox/mapbox-sdk": "^0.16.2",
+    "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
@@ -46,6 +37,5 @@
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
->>>>>>> main
   }
 }
