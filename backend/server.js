@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Load env vars
 dotenv.config();
@@ -25,7 +26,9 @@ connectDB();
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 
 // CORS - Allow multiple origins
@@ -63,6 +66,9 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// IMPORTANT: Serve static files from uploads directory - BEFORE API routes
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
@@ -88,6 +94,7 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+   console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });
 
 // Handle unhandled promise rejections
