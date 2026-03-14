@@ -6,8 +6,19 @@ import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { Dashboard } from './pages/patient/Dashboard';
 import { FindDoctors } from './pages/patient/FindDoctors';
+import { DoctorDetail } from './pages/patient/DoctorDetail';
+import { BookAppointment } from './pages/patient/BookAppointment';
 import { Reports } from './pages/patient/Reports';
 import { Appointments } from './pages/patient/Appointments';
+import { Prescriptions } from './pages/patient/Prescriptions';
+import { Profile } from './pages/patient/Profile';
+
+// Doctor pages
+import { DoctorDashboard } from './pages/doctor/DoctorDashboard';
+import { DoctorAppointments } from './pages/doctor/DoctorAppointments';
+import { PatientDetail } from './pages/doctor/PatientDetail';
+import { CreatePrescription } from './pages/doctor/CreatePrescription';
+import { DoctorProfile } from './pages/doctor/DoctorProfile';
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }) {
@@ -52,7 +63,7 @@ function AppRoutes() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Patient Routes - ACTUAL COMPONENTS */}
+        {/* Patient Routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['patient']}>
             <Dashboard />
@@ -62,6 +73,18 @@ function AppRoutes() {
         <Route path="/doctors" element={
           <ProtectedRoute allowedRoles={['patient']}>
             <FindDoctors />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctors/:id" element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <DoctorDetail />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctors/:id/book" element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <BookAppointment />
           </ProtectedRoute>
         } />
 
@@ -77,22 +100,46 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
 
-        {/* Doctor Routes */}
-        <Route path="/doctor/dashboard" element={
-          <ProtectedRoute allowedRoles={['doctor']}>
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-theme-primary">Doctor Dashboard</h1>
-              <p className="text-theme-secondary mt-2">Manage your appointments</p>
-            </div>
+        <Route path="/prescriptions" element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <Prescriptions />
           </ProtectedRoute>
         } />
 
-        <Route path="/doctor/onboarding" element={
+        <Route path="/profile" element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <Profile />
+          </ProtectedRoute>
+        } />
+
+        {/* Doctor Routes */}
+        <Route path="/doctor/dashboard" element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-theme-primary">Complete Your Profile</h1>
-              <p className="text-theme-secondary mt-2">Add your clinic details</p>
-            </div>
+            <DoctorDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctor/appointments" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <DoctorAppointments />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctor/patients/:id" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <PatientDetail />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctor/prescriptions/new" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <CreatePrescription />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctor/profile" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <DoctorProfile />
           </ProtectedRoute>
         } />
 
