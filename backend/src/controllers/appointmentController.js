@@ -1,13 +1,31 @@
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const { sendAppointmentConfirmation } = require('../utils/emailService');
 const { sendAppointmentNotification } = require('../utils/notificationService');
 
 // Book appointment
 exports.bookAppointment = async (req, res) => {
   try {
-    const { doctorId, appointmentDate, timeSlot, symptoms } = req.body;
+    const { doctorId, appointmentDate, timeSlot, symptoms, notes } = req.body;
+
+    // Validate doctorId is a valid MongoDB ObjectId (not OpenStreetMap)
+    if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid doctor ID. Can only book appointments with registered MediLink doctors, not external hospitals.' 
+      });
+    }
+
+    // Check if doctor exists
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Doctor not found' 
+      });
+    }
 
     // Check if slot is available
     const existingAppointment = await Appointment.findOne({
@@ -18,7 +36,10 @@ exports.bookAppointment = async (req, res) => {
     });
 
     if (existingAppointment) {
-      return res.status(400).json({ message: 'Time slot not available' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'This time slot is already booked. Please select another time.' 
+      });
     }
 
     const appointment = await Appointment.create({
@@ -27,28 +48,41 @@ exports.bookAppointment = async (req, res) => {
       appointmentDate,
       timeSlot,
       symptoms,
+      notes,
       status: 'pending'
     });
 
-    // Populate for notification
-    await appointment.populate('doctor');
-    await appointment.populate('patient');
+    // Populate for response
+    await appointment.populate({
+      path: 'doctor',
+      populate: { path: 'user', select: 'name email phone' }
+    });
+    await appointment.populate('patient', 'name email');
 
     // Send notification to doctor
-    const doctorUser = await User.findById(appointment.doctor.user);
-    if (doctorUser && doctorUser.fcmToken) {
-      await sendAppointmentNotification(doctorUser, 'booked', {
-        patientName: appointment.patient.name,
-        id: appointment._id
-      });
+    try {
+      const doctorUser = await User.findById(doctor.user);
+      if (doctorUser && doctorUser.fcmToken) {
+        await sendAppointmentNotification(doctorUser, 'booked', {
+          patientName: appointment.patient.name,
+          id: appointment._id
+        });
+      }
+    } catch (notifError) {
+      console.log('Notification failed (non-critical):', notifError.message);
     }
 
     res.status(201).json({
       success: true,
+      message: 'Appointment booked successfully',
       appointment
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Book appointment error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to book appointment' 
+    });
   }
 };
 
@@ -60,7 +94,10 @@ exports.getMyAppointments = async (req, res) => {
     if (req.user.role === 'doctor') {
       const doctor = await Doctor.findOne({ user: req.user.id });
       if (!doctor) {
-        return res.status(404).json({ message: 'Doctor profile not found' });
+        return res.status(404).json({ 
+          success: false,
+          message: 'Doctor profile not found' 
+        });
       }
       query = { doctor: doctor._id };
     } else {
@@ -71,8 +108,9 @@ exports.getMyAppointments = async (req, res) => {
       .populate('patient', 'name email phone profilePhoto')
       .populate({
         path: 'doctor',
-        populate: { path: 'user', select: 'name email phone profilePhoto' }
+        populate: { path: 'user', select: 'name email phone profilePhoto specialization' }
       })
+      .populate('prescription')
       .sort({ appointmentDate: -1 });
 
     res.json({
@@ -81,7 +119,11 @@ exports.getMyAppointments = async (req, res) => {
       appointments
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get appointments error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };
 
@@ -91,14 +133,17 @@ exports.updateAppointmentStatus = async (req, res) => {
     const { status, cancellationReason } = req.body;
     
     const appointment = await Appointment.findById(req.params.id)
-      .populate('patient')
+      .populate('patient', 'name email fcmToken')
       .populate({
         path: 'doctor',
-        populate: { path: 'user', select: 'name' }
+        populate: { path: 'user', select: 'name email fcmToken' }
       });
 
     if (!appointment) {
-      return res.status(404).json({ message: 'Appointment not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Appointment not found' 
+      });
     }
 
     // Authorization check
@@ -109,7 +154,10 @@ exports.updateAppointmentStatus = async (req, res) => {
       (req.user.role === 'patient' && appointment.patient._id.toString() === req.user.id);
 
     if (!isAuthorized) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'Not authorized to update this appointment' 
+      });
     }
 
     appointment.status = status;
@@ -122,28 +170,37 @@ exports.updateAppointmentStatus = async (req, res) => {
 
     // Send notifications
     if (status === 'confirmed') {
-      // Email to patient
-      await sendAppointmentConfirmation(
-        appointment.patient,
-        appointment,
-        { name: appointment.doctor.user.name }
-      );
-      
-      // Push notification to patient
-      if (appointment.patient.fcmToken) {
-        await sendAppointmentNotification(appointment.patient, 'confirmed', {
-          doctorName: appointment.doctor.user.name,
-          id: appointment._id
-        });
+      try {
+        // Email to patient
+        await sendAppointmentConfirmation(
+          appointment.patient,
+          appointment,
+          { name: appointment.doctor.user.name }
+        );
+        
+        // Push notification to patient
+        if (appointment.patient.fcmToken) {
+          await sendAppointmentNotification(appointment.patient, 'confirmed', {
+            doctorName: appointment.doctor.user.name,
+            id: appointment._id
+          });
+        }
+      } catch (notifError) {
+        console.log('Notification failed (non-critical):', notifError.message);
       }
     }
 
     res.json({
       success: true,
+      message: `Appointment ${status}`,
       appointment
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Update status error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };
 
@@ -159,7 +216,10 @@ exports.getAppointmentById = async (req, res) => {
       .populate('prescription');
 
     if (!appointment) {
-      return res.status(404).json({ message: 'Appointment not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Appointment not found' 
+      });
     }
 
     res.json({
@@ -167,6 +227,9 @@ exports.getAppointmentById = async (req, res) => {
       appointment
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };

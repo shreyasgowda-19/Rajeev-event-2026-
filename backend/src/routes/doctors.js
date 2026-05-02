@@ -7,27 +7,24 @@ const {
   updateDoctorProfile,
   getDoctorAppointments,
   geocodeClinicAddress,      // NEW
-  reverseGeocodeLocation   // NEW
+  reverseGeocodeLocation,   // NEW
+  getStats
 } = require('../controllers/doctorController');
 const { auth, authorize } = require('../middleware/auth');
 
 // Create doctor profile
 router.post('/profile', auth, createDoctorProfile);
-
 // Get all doctors (with real hospital search)
 router.get('/', auth, getAllDoctors);
-
 // Geocoding endpoints
 router.post('/geocode', auth, geocodeClinicAddress);
 router.get('/reverse-geocode', auth, reverseGeocodeLocation);
-
 // Get single doctor
 router.get('/:id', auth, getDoctorById);
-
 // Update doctor profile
 router.put('/profile', auth, authorize('doctor'), updateDoctorProfile);
-
 // Get doctor appointments
 router.get('/:doctorId/appointments', auth, authorize('doctor'), getDoctorAppointments);
+router.get('/stats', getStats);  
 
 module.exports = router;
