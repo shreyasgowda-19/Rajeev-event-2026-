@@ -340,3 +340,63 @@ exports.getDoctorAppointments = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// backend/src/controllers/doctorController.js
+exports.getStats = async (req, res) => {
+  try {
+    const doctorId = req.user._id; // or req.user.doctorId depending on your auth
+
+    // Check if doctor exists first
+    const doctor = await Doctor.findOne({ user: doctorId });
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor profile not found' });
+    }
+
+    // Use safe aggregation with null checks
+    const stats = await Appointment.aggregate([
+      {
+        $match: {
+          doctor: doctor._id,
+          // Ensure we don't fail on missing fields
+          status: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAppointments: { $sum: 1 },
+          totalPatients: { 
+            $addToSet: { $ifNull: ["$patient", null] } 
+          },
+          completedAppointments: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          totalAppointments: 1,
+          totalPatients: { $size: "$totalPatients" },
+          completedAppointments: 1
+        }
+      }
+    ]);
+
+    // Return default values if no appointments found
+    const result = stats[0] || {
+      totalAppointments: 0,
+      totalPatients: 0,
+      completedAppointments: 0,
+      rating: doctor.rating || 4.5,
+      totalReviews: 0
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Stats aggregation error:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch stats',
+      error: error.message 
+    });
+  }
+};
