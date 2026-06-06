@@ -4,8 +4,9 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const path = require('path');
 
-// Load env vars
+// Load env vars FIRST
 dotenv.config();
 
 const connectDB = require('./src/config/database');
@@ -19,29 +20,28 @@ const appointmentRoutes = require('./src/routes/appointments');
 const prescriptionRoutes = require('./src/routes/prescriptions');
 const mapRoutes = require('./src/routes/maps');
 
-// Connect to database
-connectDB();
-
+// Initialize app
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 
 // CORS - Allow multiple origins
 const allowedOrigins = [
-  'http://localhost:3000',   // Your current frontend
-  'http://localhost:5173',   // Vite default (if you switch later)
-  'http://localhost:3001',   // Alternative ports
-  process.env.CLIENT_URL,     // From .env file
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:3001',
+  // 'https://medlink.vercel.app',        // Your Vercel frontend
+  // 'https://medlink-git-main-yourname.vercel.app', // Vercel preview deployments
+  process.env.CLIENT_URL,
 ].filter(Boolean);
 
-// CORS
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -58,10 +58,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Dev logging middleware
+// Dev logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
+
+// Static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -79,23 +82,42 @@ app.get('/api/health', (req, res) => {
 // Error handler
 app.use(errorHandler);
 
-// Handle unhandled routes - ONLY ONE catch-all route
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-const PORT = process.env.PORT || 5000; 
+const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// 🔥 SINGLE DATABASE CONNECTION - Moved here after all setup
+const startServer = async () => {
+  try {
+    await connectDB();
+    
+    // Optional: Seed data only in development (uncomment if you have seeder)
+    // if (process.env.NODE_ENV === 'development') {
+    //   const seeder = require('./src/utils/seeder');
+    //   await seeder();
+    // }
+    
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+      console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
+    });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
-  console.log(err.name, err.message);
-  server.close(() => {
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (err) => {
+      console.log('UNHANDLED REJECTION! 💥 Shutting down...');
+      console.log(err.name, err.message);
+      server.close(() => {
+        process.exit(1);
+      });
+    });
+
+  } catch (error) {
+    console.error('Failed to start server:', error);
     process.exit(1);
-  });
-});
+  }
+};
 
+startServer();

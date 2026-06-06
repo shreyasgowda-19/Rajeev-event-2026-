@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "jest"
+    "test": "jest",
+    "seed:doctors": "node src/utils/seedDoctors.js"
   },
   "keywords": [],
   "dependencies": {
@@ -23,6 +24,7 @@
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
     "firebase-admin": "^13.7.0",
+    "fs-extra": "^11.3.4",
     "geolib": "^3.3.4",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
